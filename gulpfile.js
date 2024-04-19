@@ -1,18 +1,16 @@
-var gulp = require('gulp');
+const gulp = require('gulp');
 
 // include plug-ins
-var rename = require('gulp-rename');  
-var stripDebug = require('gulp-strip-debug');
-var uglify = require('gulp-uglify');
+const rename = require('gulp-rename');  
+const stripDebug = require('gulp-strip-debug');
+const terser = require("gulp-terser");
 
 // JS concat, strip debugging and minify
 gulp.task('scripts', function() {
     return gulp.src(['dist/js/multiselect.js'])
         .pipe(rename('multiselect.min.js'))
         .pipe(stripDebug())
-        .pipe(uglify({
-            sourceMap: true
-        }))
+        .pipe(new terser())
         .pipe(gulp.dest('dist/js/'));
 });
 
