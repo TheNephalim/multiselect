@@ -707,7 +707,7 @@ if (typeof jQuery === 'undefined') {
 
     var ua = window.navigator.userAgent;
     var isIE = (ua.indexOf("MSIE ") > -1 || ua.indexOf("Trident/") > -1 || ua.indexOf("Edge/") > -1);
-    var isSafari = ua.indexOf("Safari/") > -1 && ua.indexOf("Chrome/") === -1;
+    var isSafari = ua.toLowerCase().indexOf("safari/") > -1 && ua.toLowerCase().indexOf("chrome/") === -1;
     var isFirefox = ua.toLowerCase().indexOf("firefox") > -1;
 
     $.fn.multiselect = function( options ) {
