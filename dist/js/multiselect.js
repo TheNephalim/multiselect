@@ -160,10 +160,10 @@ if (typeof jQuery === 'undefined') {
                 if (self.options.search && self.options.search.$left) {
                     self.options.search.$left.on('keyup', function(e) {
                         if (self.callbacks.fireSearch(this.value)) {
-                            var $toShow = self.$left.find('option:search("' + this.value + '")').mShow();
-                            var $toHide = self.$left.find('option:not(:search("' + this.value + '"))').mHide();
-                            var $grpHide = self.$left.find('option').closest('optgroup').mHide();
-                            var $grpShow = self.$left.find('option:not(.hidden)').parent('optgroup').mShow();
+                            const $toShow = unfilterItems(self.$left[0], this.value);
+                            const $toHide = filterItems(self.$left[0], this.value);
+                            const $grpHide = filterOptionGroup(self.$left[0]);
+                            const $grpShow = unfilterOptionGroup(self.$left[0]);
                         } else {
                             self.$left.find('option, optgroup').mShow();
                         }
@@ -174,10 +174,10 @@ if (typeof jQuery === 'undefined') {
                 if (self.options.search && self.options.search.$right) {
                     self.options.search.$right.on('keyup', function(e) {
                         if (self.callbacks.fireSearch(this.value)) {
-                            var $toShow = self.$right.find('option:search("' + this.value + '")').mShow();
-                            var $toHide = self.$right.find('option:not(:search("' + this.value + '"))').mHide();
-                            var $grpHide = self.$right.find('option').closest('optgroup').mHide();
-                            var $grpShow = self.$right.find('option:not(.hidden)').parent('optgroup').mShow();
+                            const $toShow = unfilterItems(self.$right[0], this.value);
+                            const $toHide = filterItems(self.$right[0], this.value);
+                            const $grpHide = filterOptionGroup(self.$right)[0];
+                            const $grpShow = unfilterOptionGroup(self.$right[0]);
                         } else {
                             self.$right.find('option, optgroup').mShow();
                         }
@@ -398,12 +398,12 @@ if (typeof jQuery === 'undefined') {
             moveToLeft: function( $options, event, silent, skipStack ) {
                 var self = this;
 
-
                 if ( typeof self.callbacks.beforeMoveToLeft == 'function' && !silent ) {
                     if ( !self.callbacks.beforeMoveToLeft( self.$left, self.$right, $options ) ) {
                         return false;
                     }
                 }
+
                 if ( typeof self.callbacks.moveToLeft == 'function' ) {
                     self.callbacks.moveToLeft( self, $options, event, silent, skipStack );
                 }
@@ -458,7 +458,7 @@ if (typeof jQuery === 'undefined') {
                             if (self.options.ignoreDisabled) {
                                 disabledSelector = ':not(:disabled)';
                             }
-                            
+
                             $destinationGroup.move($option.find('option' + disabledSelector));
                         } else {
                             $destinationGroup.move($option);
@@ -699,14 +699,15 @@ if (typeof jQuery === 'undefined') {
              *  @return {boolean}
             **/
             fireSearch: function(value) {
-                return value.length > 1;
+                //return value.length > 1;
+                return true;
             }
         }
     };
 
     var ua = window.navigator.userAgent;
-    var isIE = (ua.indexOf("MSIE ") + ua.indexOf("Trident/") + ua.indexOf("Edge/")) > -3;
-    var isSafari = ua.toLowerCase().indexOf("safari") > -1;
+    var isIE = (ua.indexOf("MSIE ") > -1 || ua.indexOf("Trident/") > -1 || ua.indexOf("Edge/") > -1);
+    var isSafari = ua.indexOf("Safari/") > -1 && ua.indexOf("Chrome/") === -1;
     var isFirefox = ua.toLowerCase().indexOf("firefox") > -1;
 
     $.fn.multiselect = function( options ) {
@@ -814,5 +815,88 @@ if (typeof jQuery === 'undefined') {
         var regex = new RegExp(meta[3].replace(/([^a-zA-Z0-9])/g, "\\$1"), "i");
 
         return $(elem).text().match(regex);
+    }
+
+    const searchItem = function(item, searchValue) {
+        return item.text.toLowerCase().indexOf(searchValue.toLowerCase()) >= 0
+    }
+
+    const filterItems = function(selectElement, searchValue) {
+        const items = selectElement.querySelectorAll('option:not(.hidden)');
+
+        for (let i = 0; i < items.length; i++) {
+            if (!searchItem(items[i], searchValue)) {
+                hideItem(items[i]);
+            }
+        }
+    }
+
+    const filterOptionGroup = function(selectElement) {
+        Array.from(selectElement.querySelectorAll('optgroup')).filter(function(optgroup) {
+            return Array.from(optgroup.querySelectorAll('option.hidden')).length > 0;
+        }).forEach(function(optgroup) {
+            optgroup.style.display = 'none';
+        });
+    }
+
+    const unfilterOptionGroup = function(selectElement) {
+        Array
+            .from(selectElement.querySelectorAll('option:not(.hidden)'))
+            .map(function(option) {
+                return option.parentNode;
+            })
+            .filter(function(optgroup, index, arr) {
+                return arr.indexOf(optgroup) === index;
+            })
+            .forEach(function(optgroup) {
+                optgroup.style.display = '';
+            });
+    }
+
+    const unfilterItems = function(selectElement, searchValue) {
+        const items = selectElement.querySelectorAll('option.hidden');
+
+        for (let i = 0; i < items.length; i++) {
+            if (searchItem(items[i], searchValue)) {
+                showItem(items[i]);
+            }
+        }
+    }
+
+    const hideItem = function(itemToHide) {
+        itemToHide.classList.add('hidden');
+        itemToHide.style.display = 'none';
+
+        // Wrap with <span> to make it compatible with IE
+        if (isIE || isSafari) {
+            if (!itemToHide.parentNode || itemToHide.parentNode.tagName.toLowerCase() !== 'span') {
+                var span = document.createElement('span');
+                itemToHide.parentNode.insertBefore(span, itemToHide);
+                span.appendChild(itemToHide);
+            }
+        }
+
+        // Disable if Firefox
+        if (isFirefox) {
+            itemToHide.disabled = true;
+        }
+    }
+
+    const showItem = function(itemToShow) {
+        itemToShow.classList.remove('hidden');
+        itemToShow.style.display = ''; // Reset display property to default
+
+        // Unwrap <span> if present
+        if (isIE || isSafari) {
+            if (itemToShow.parentNode && itemToShow.parentNode.tagName.toLowerCase() === 'span') {
+                itemToShow.parentNode.parentNode.insertBefore(itemToShow, itemToShow.parentNode);
+                itemToShow.parentNode.parentNode.removeChild(itemToShow.parentNode);
+            }
+        }
+
+        // Enable if Firefox
+        if (isFirefox) {
+            itemToShow.disabled = false;
+        }
     }
 }));
